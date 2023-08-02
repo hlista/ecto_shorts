@@ -22,6 +22,30 @@ defmodule EctoShorts.QueryBuilder.Schema do
     )
   end
 
+  def create_dynamic_preload(params, query) do
+    create_dynamic_preload(params, QueryBuilder.query_schema(query), :ecto_shorts)
+  end
+
+  def create_dynamic_preload(params, schema, binding_alias) do
+    Enum.reduce(params, [], fn {field, val}, acc ->
+      cond do
+        field in schema.__schema__(:assocations) ->
+          relational_schema = get_associated_schema_from_field(schema, field)
+          binding_alias = :"#{binding_alias}_#{field}"
+          dynamic_preload = Ecto.Query.dynamic([{^binding_alias, c}], c)
+          [
+            {field, {
+              dynamic_preload,
+              create_dynamic_preload(val, relational_schema, binding_alias)
+              }
+            }
+          | acc]
+        true ->
+          acc
+      end
+    end)
+  end
+
   def create_schema_filter({filter_field, val}, schema, query) do
     cond do
       filter_field in schema.__schema__(:query_fields) ->
