@@ -91,14 +91,15 @@ defmodule EctoShorts.CommonFilters do
     end
   end
 
-  def merge_preload_with_dynamic_bindings(%{preload: preload} = params, query) do
-    dynamic_preload = QueryBuilder.Schema.create_dynamic_preload(params, query)
-    merged_preload = merge_preloads(preload, dynamic_preload)
-    Map.put(params, :preload, merged_preload)
-  end
-
-  def merge_preload_with_dynamic_bindings(params, _) do
-    params
+  def merge_preload_with_dynamic_bindings(params, query) do
+    case Keyword.get(params, :preload) do
+      nil ->
+        params
+      preload ->
+        dynamic_preload = QueryBuilder.Schema.create_dynamic_preload(params, query)
+        merged_preload = merge_preloads(preload, dynamic_preload)
+        Map.put(params, :preload, merged_preload)
+    end
   end
 
   def merge_preloads(preload, dynamic_preload) when is_atom(preload) do
