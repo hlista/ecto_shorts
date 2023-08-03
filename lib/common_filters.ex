@@ -98,7 +98,7 @@ defmodule EctoShorts.CommonFilters do
       preload ->
         dynamic_preload = QueryBuilder.Schema.create_dynamic_preload(params, query)
         merged_preload = merge_preloads(preload, dynamic_preload)
-        Map.put(params, :preload, merged_preload)
+        Keyword.put(params, :preload, merged_preload)
     end
   end
 
