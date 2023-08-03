@@ -68,8 +68,8 @@ defmodule EctoShorts.CommonFilters do
 
   def convert_params_to_filter(query, params) do
     params
-      |> ensure_last_is_final_filter
       |> merge_preload_with_dynamic_bindings(query)
+      |> ensure_last_is_final_filter
       |> Enum.reduce(query, &create_schema_filter/2)
   end
 
@@ -98,7 +98,9 @@ defmodule EctoShorts.CommonFilters do
       preload ->
         dynamic_preload = QueryBuilder.Schema.create_dynamic_preload(params, query)
         merged_preload = merge_preloads(preload, dynamic_preload)
-        Keyword.put(params, :preload, merged_preload)
+        params
+          |> Keyword.delete(:preload)
+          |> Kernel.++([preload: merged_preload])
     end
   end
 
