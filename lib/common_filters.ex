@@ -68,7 +68,7 @@ defmodule EctoShorts.CommonFilters do
 
   def convert_params_to_filter(query, params) do
     params
-      |> merge_preload_with_dynamic_bindings(query)
+      |> configure_preload
       |> ensure_last_is_final_filter
       |> Enum.reduce(query, &create_schema_filter/2)
   end
@@ -91,44 +91,60 @@ defmodule EctoShorts.CommonFilters do
     end
   end
 
-  def merge_preload_with_dynamic_bindings(params, query) do
+  def configure_preload(params) do
     case Keyword.get(params, :preload) do
       nil ->
         params
       preload ->
-        dynamic_preload = QueryBuilder.Schema.create_dynamic_preload(params, query)
-        merged_preload = merge_preloads(preload, dynamic_preload)
+        formated_preload = traverse_preload(preload, [])
         params
           |> Keyword.delete(:preload)
-          |> Kernel.++([preload: merged_preload])
+          |> Kernel.++([preload: formated_preload])
     end
   end
 
-  def merge_preloads(preload, dynamic_preload) when is_atom(preload) do
-    merge_preloads([preload], dynamic_preload)
-  end
-
-  def merge_preloads(preload, dynamic_preload) when is_list(preload) do
+  def traverse_preload(preload, relationship_list) when is_list(preload) do
     Enum.reduce(preload, [], fn p, acc ->
-      resolve_key_value(p, dynamic_preload, acc)
+      resolve_preload(p, relationship_list, acc)
     end)
   end
 
-  defp resolve_key_value({k, v}, dynamic_preload, acc) do
-    case Keyword.get(dynamic_preload, k) do
-      nil ->
-        [{k, v} | acc]
-      {dynamic_tag, nested_dynamic} ->
-        [{k, {dynamic_tag, merge_preloads(v, nested_dynamic)}} | acc]
-    end
+  def traverse_preload(preload, relationship_list) do
+    traverse_preload([preload], relationship_list)
   end
 
-  defp resolve_key_value(k, dynamic_preload, acc) when is_atom(k) do
-    case Keyword.get(dynamic_preload, k) do
-      nil ->
-        [k | acc]
-      {dynamic_tag, _} ->
-        [{k, dynamic_tag} | acc]
-    end
+  def resolve_preload({k, {[binding_name: name], v}}, relationship_list, acc) do
+    relationship_list = relationship_list ++ [k]
+    [{k, {EctoShorts.QueryBuilder.Schema.dynamic_preload(name), traverse_preload(v, relationship_list)}} | acc]
+  end
+
+  def resolve_preload({k, {:ecto_shorts_binding, v}}, relationship_list, acc) do
+    relationship_list = relationship_list ++ [k]
+    [{k, {relationship_list |> build_ecto_shorts_binding() |> EctoShorts.QueryBuilder.Schema.dynamic_preload(), traverse_preload(v, relationship_list)}} | acc]
+  end
+
+  def resolve_preload({k, :ecto_shorts_binding}, relationship_list, acc) do
+    relationship_list = relationship_list ++ [k]
+    [{k, {relationship_list |> build_ecto_shorts_binding() |> EctoShorts.QueryBuilder.Schema.dynamic_preload()}} | acc]
+  end
+
+  def resolve_preload({k, [binding_name: name]}, _relationship_list, acc) do
+    [{k, {EctoShorts.QueryBuilder.Schema.dynamic_preload(name)}} | acc]
+  end
+
+  def resolve_preload({k, v}, relationship_list, acc) do
+    relationship_list = relationship_list ++ [k]
+    [{k, traverse_preload(v, relationship_list)} | acc]
+  end
+
+  def resolve_preload(p, _relationship_list, acc) do
+    [p | acc]
+  end
+
+  def build_ecto_shorts_binding(relationship_list) do
+    binding_alias = Enum.reduce(relationship_list, "ecto_shorts", fn relationship, string ->
+      "#{string}_#{relationship}"
+    end)
+    :"#{binding_alias}"
   end
 end
