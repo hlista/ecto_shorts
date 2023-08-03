@@ -91,12 +91,7 @@ defmodule EctoShorts.CommonFilters do
   end
 
   def merge_preloads(preload, dynamic_preload) when is_atom(preload) do
-    case Keyword.get(dynamic_preload, preload) do
-      nil ->
-        preload
-      {dynamic_tag, _} ->
-        {preload, dynamic_tag}
-    end
+    merge_preloads([preload], dynamic_preload)
   end
 
   def merge_preloads(preload, dynamic_preload) when is_list(preload) do
