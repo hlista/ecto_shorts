@@ -89,4 +89,37 @@ defmodule EctoShorts.CommonFilters do
       params
     end
   end
+
+  def merge_preloads(preload, dynamic_preload) when is_atom(preload) do
+    case Keyword.get(dynamic_preload, preload) do
+      nil ->
+        preload
+      {dynamic_tag, _} ->
+        {preload, dynamic_tag}
+    end
+  end
+
+  def merge_preloads(preload, dynamic_preload) when is_list(preload) do
+    Enum.reduce(preload, [], fn p, acc ->
+      resolve_key_value(p, dynamic_preload, acc)
+    end)
+  end
+
+  defp resolve_key_value({k, v}, dynamic_preload, acc) do
+    case Keyword.get(dynamic_preload, k) do
+      nil ->
+        [{k, v} | acc]
+      {dynamic_tag, nested_dynamic} ->
+        [{k, {dynamic_tag, merge_preloads(v, nested_dynamic)}} | acc]
+    end
+  end
+
+  defp resolve_key_value(k, dynamic_preload, acc) when is_atom(k) do
+    case Keyword.get(dynamic_preload, k) do
+      nil ->
+        [k | acc]
+      {dynamic_tag, _} ->
+        [{k, dynamic_tag} | acc]
+    end
+  end
 end
