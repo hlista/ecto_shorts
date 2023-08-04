@@ -123,6 +123,11 @@ defmodule EctoShorts.CommonFilters do
     [{k, {relationship_list |> build_ecto_shorts_binding() |> EctoShorts.QueryBuilder.Schema.dynamic_preload(), traverse_preload(v, relationship_list)}} | acc]
   end
 
+  def resolve_preload({k, {dynamic, v}}, relationship_list, acc) do
+    relationship_list = relationship_list ++ [k]
+    [{k, {dynamic, traverse_preload(v, relationship_list)}} | acc]
+  end
+
   def resolve_preload({k, :ecto_shorts_binding}, relationship_list, acc) do
     relationship_list = relationship_list ++ [k]
     [{k, {relationship_list |> build_ecto_shorts_binding() |> EctoShorts.QueryBuilder.Schema.dynamic_preload()}} | acc]
@@ -132,9 +137,13 @@ defmodule EctoShorts.CommonFilters do
     [{k, {EctoShorts.QueryBuilder.Schema.dynamic_preload(name)}} | acc]
   end
 
-  def resolve_preload({k, v}, relationship_list, acc) do
+  def resolve_preload({k, v}, relationship_list, acc) when is_atom(v) or is_list(v) do
     relationship_list = relationship_list ++ [k]
     [{k, traverse_preload(v, relationship_list)} | acc]
+  end
+
+  def resolve_preload({k, v}, _relationship_list, acc) do
+    [{k, v} | acc]
   end
 
   def resolve_preload(p, _relationship_list, acc) do
