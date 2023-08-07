@@ -15,7 +15,6 @@ defmodule EctoShorts.QueryBuilder.Common do
   @behaviour QueryBuilder
 
   @filters [
-    :preload,
     :start_date,
     :end_date,
     :before,
