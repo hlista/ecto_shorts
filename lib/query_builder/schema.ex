@@ -22,10 +22,6 @@ defmodule EctoShorts.QueryBuilder.Schema do
     )
   end
 
-  def dynamic_preload(binding_alias) do
-    Ecto.Query.dynamic([{^binding_alias, c}], c)
-  end
-
   def create_schema_filter({filter_field, val}, schema, query) do
     cond do
       filter_field in schema.__schema__(:query_fields) ->
